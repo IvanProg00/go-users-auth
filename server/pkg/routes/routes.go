@@ -10,9 +10,14 @@ const (
 	ApiV1 = "/api/v1"
 
 	UsersUrl = "users"
+
+	UsersApiV1 = ApiV1 + "/" + UsersUrl
 )
 
 func New(app *fiber.App) {
-	app.Get(ApiV1+"/"+UsersUrl, controllers.GetUsers)
-	app.Post(ApiV1+"/"+UsersUrl, controllers.CreateUser)
+
+	app.Get(UsersApiV1, controllers.GetUsers)
+	app.Get(UsersApiV1+"/:id", controllers.GetUser)
+	app.Post(UsersApiV1, controllers.CreateUser)
+	app.Put(UsersApiV1+"/:id", controllers.UpdateUser)
 }

@@ -2,10 +2,10 @@ package controllers
 
 import (
 	"fmt"
+	"net/http"
 	"users-authentication/pkg/database"
 	"users-authentication/pkg/models"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -32,9 +32,9 @@ func CreateUser(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	validate := validator.New()
-	if err := validate.Struct(user); err != nil {
-		return err
+	if jsonErr := models.ValidateUser(user); jsonErr != nil {
+		ctx.SendStatus(http.StatusBadRequest)
+		return ctx.JSON(jsonErr)
 	}
 
 	res, err := database.MI.DB.
@@ -43,12 +43,9 @@ func CreateUser(ctx *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	id, ok := res.InsertedID.(primitive.ObjectID)
-	if !ok {
-		return ctx.JSON(bson.M{
-			"mess": "Not Found",
-		})
-	}
+
+	id, _ := res.InsertedID.(primitive.ObjectID)
 	user.ID = id
+	ctx.SendStatus(http.StatusCreated)
 	return ctx.JSON(user)
 }

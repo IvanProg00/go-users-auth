@@ -7,17 +7,17 @@ import (
 )
 
 const (
-	ApiV1 = "/api/v1"
-
-	UsersUrl = "users"
-
-	UsersApiV1 = ApiV1 + "/" + UsersUrl
+	UsersUrl = "/users"
 )
 
 func New(app *fiber.App) {
+	api := app.Group("/api")
+	apiv1 := api.Group("/v1")
 
-	app.Get(UsersApiV1, controllers.GetUsers)
-	app.Get(UsersApiV1+"/:id", controllers.GetUser)
-	app.Post(UsersApiV1, controllers.CreateUser)
-	app.Put(UsersApiV1+"/:id", controllers.UpdateUser)
+	apiv1users := apiv1.Group("/users")
+	apiv1users.Get("", controllers.GetUsers)
+	apiv1users.Get("/:id", controllers.GetUser)
+	apiv1users.Post("", controllers.CreateUser)
+	apiv1users.Put("/:id", controllers.UpdateUser)
+	apiv1users.Delete("/:id", controllers.DeleteUser)
 }

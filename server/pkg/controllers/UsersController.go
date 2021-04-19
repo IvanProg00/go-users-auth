@@ -1,8 +1,9 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
-	"users-authentication/pkg/api_mess"
+	"users-authentication/pkg/api_struct"
 	"users-authentication/pkg/configs"
 	"users-authentication/pkg/database"
 	"users-authentication/pkg/error_utils"
@@ -20,39 +21,31 @@ func GetUsers(ctx *fiber.Ctx) error {
 		Find(ctx.Context(), bson.D{})
 	if err != nil {
 		ctx.SendStatus(http.StatusInternalServerError)
-		return ctx.JSON(api_mess.ErrorMessage(error_utils.InternalServerError))
+		return ctx.JSON(api_struct.ErrorMessage(error_utils.InternalServerError))
 	}
 
-	var users []models.UserModel
+	var users []models.UserShowModel
 	if err := cursor.All(ctx.Context(), &users); err != nil {
 		ctx.SendStatus(http.StatusInternalServerError)
-		return ctx.JSON(api_mess.ErrorMessage(error_utils.InternalServerError))
+		return ctx.JSON(api_struct.ErrorMessage(error_utils.InternalServerError))
 	}
 
 	ctx.SendStatus(http.StatusOK)
-	return ctx.JSON(api_mess.SuccessMessage(users))
+	return ctx.JSON(api_struct.SuccessMessage(users))
 }
 
 func GetUser(ctx *fiber.Ctx) error {
 	var user models.UserModel
 
 	id := ctx.Params("id", "")
-	objectID, err := primitive.ObjectIDFromHex(id)
+	user, err := models.GetUserById(id, ctx)
 	if err != nil {
-		ctx.SendStatus(http.StatusBadRequest)
-		return ctx.JSON(api_mess.ErrorMessage(error_utils.IncorrectObjectID))
-	}
-
-	err = database.MI.DB.
-		Collection(database.CollectionUsers).
-		FindOne(ctx.Context(), bson.M{"_id": objectID}).Decode(&user)
-	if err != nil {
-		ctx.SendStatus(http.StatusNotFound)
-		return ctx.JSON(api_mess.ErrorMessage(error_utils.UserNotFound))
+		return err
 	}
 
 	ctx.SendStatus(http.StatusOK)
-	return ctx.JSON(api_mess.SuccessMessage(user))
+	return ctx.
+		JSON(api_struct.SuccessMessage(models.FromUserToShow(user)))
 }
 
 func CreateUser(ctx *fiber.Ctx) error {
@@ -79,50 +72,49 @@ func CreateUser(ctx *fiber.Ctx) error {
 		InsertOne(ctx.Context(), user)
 	if err != nil {
 		ctx.SendStatus(http.StatusInternalServerError)
-		return ctx.JSON(api_mess.ErrorMessage(error_utils.NotAddedToDatabase))
+		return ctx.JSON(api_struct.ErrorMessage(error_utils.NotAddedToDatabase))
 	}
 
 	id, _ := res.InsertedID.(primitive.ObjectID)
 	user.ID = id
 
+	userShow := models.FromUserToShow(user)
+
 	ctx.SendStatus(http.StatusCreated)
-	return ctx.JSON(api_mess.SuccessMessage(user))
+	return ctx.JSON(api_struct.SuccessMessage(userShow))
 }
 
 func UpdateUser(ctx *fiber.Ctx) error {
 	var user models.UserUpdateModel
-	var userDB models.UserModel
 
 	ctx.BodyParser(&user)
 
 	id := ctx.Params("id", "")
-	objectID, err := primitive.ObjectIDFromHex(id)
+	userDB, err := models.GetUserById(id, ctx)
 	if err != nil {
-		ctx.SendStatus(http.StatusBadRequest)
-		return ctx.JSON(api_mess.ErrorMessage(error_utils.IncorrectObjectID))
+		return err
 	}
-	user.ID = objectID
+
+	user.ID = userDB.ID
 
 	collection := database.MI.DB.
 		Collection(database.CollectionUsers)
-	err = collection.
-		FindOne(ctx.Context(), bson.M{"_id": objectID}).
-		Decode(&userDB)
-	if err != nil {
-		ctx.SendStatus(http.StatusBadRequest)
-		return ctx.JSON(api_mess.ErrorMessage(error_utils.UserNotFound))
-	}
 
 	if jsonErr := models.ValidateUserUpdate(user); jsonErr != nil {
 		ctx.SendStatus(http.StatusBadRequest)
 		return ctx.JSON(jsonErr)
 	}
 
-	if err = bcrypt.CompareHashAndPassword([]byte(userDB.Password), []byte(user.Password)); user.Password != "" && err != nil {
+	err = bcrypt.
+		CompareHashAndPassword(
+			[]byte(userDB.Password),
+			[]byte(user.Password),
+		)
+	if user.Password != "" && err != nil {
 		password, err := bcrypt.GenerateFromPassword([]byte(user.Password), configs.PasswordCost)
 		if err != nil {
 			ctx.SendStatus(http.StatusInternalServerError)
-			return ctx.JSON(api_mess.ErrorMessage(error_utils.InternalServerError))
+			return ctx.JSON(api_struct.ErrorMessage(error_utils.InternalServerError))
 		}
 		user.Password = string(password)
 	} else {
@@ -130,21 +122,44 @@ func UpdateUser(ctx *fiber.Ctx) error {
 	}
 
 	err = collection.
-		FindOneAndUpdate(ctx.Context(), bson.M{"_id": objectID}, bson.M{"$set": user}).
+		FindOneAndUpdate(ctx.Context(), bson.M{"_id": user.ID}, bson.M{"$set": user}).
 		Decode(&user)
 	if err != nil {
 		ctx.SendStatus(http.StatusInternalServerError)
-		return ctx.JSON(api_mess.ErrorMessage(error_utils.NotAddedToDatabase))
+		return ctx.JSON(api_struct.ErrorMessage(error_utils.InternalServerError))
 	}
 
+	var userShow models.UserShowModel
 	err = collection.
-		FindOne(ctx.Context(), bson.M{"_id": objectID}).
-		Decode(&userDB)
+		FindOne(ctx.Context(), bson.M{"_id": user.ID}).
+		Decode(&userShow)
 	if err != nil {
-		ctx.SendStatus(http.StatusBadRequest)
-		return ctx.JSON(api_mess.ErrorMessage(error_utils.UserNotFound))
+		ctx.SendStatus(http.StatusNotFound)
+		return ctx.JSON(api_struct.ErrorMessage(error_utils.UserNotFound))
 	}
 
 	ctx.SendStatus(http.StatusOK)
-	return ctx.JSON(api_mess.SuccessMessage(userDB))
+	return ctx.JSON(api_struct.SuccessMessage(userShow))
+}
+
+func DeleteUser(ctx *fiber.Ctx) error {
+	id := ctx.Params("id", "")
+
+	user, err := models.GetUserById(id, ctx)
+	if err != nil {
+		return err
+	}
+
+	var userShow models.UserShowModel
+	err = database.MI.DB.
+		Collection(database.CollectionUsers).
+		FindOneAndDelete(ctx.Context(), bson.M{"_id": user.ID}).Decode(&userShow)
+	if err != nil {
+		ctx.SendStatus(http.StatusInternalServerError)
+		return ctx.JSON(error_utils.InternalServerError)
+	}
+	fmt.Println("OK")
+
+	ctx.SendStatus(http.StatusOK)
+	return ctx.JSON(api_struct.SuccessMessage(userShow))
 }

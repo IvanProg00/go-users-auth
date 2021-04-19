@@ -7,6 +7,7 @@ import (
 	"time"
 	"users-authentication/pkg/util"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -61,5 +62,19 @@ func NewConnectionDatabase(database string) error {
 	}
 
 	MI.DB = MI.Client.Database(database)
+
+	if _, err := ConfigDatabase(); err != nil {
+		return err
+	}
 	return nil
+}
+
+func ConfigDatabase() (string, error) {
+	return MI.DB.
+		Collection(CollectionUsers).
+		Indexes().
+		CreateOne(context.Background(), mongo.IndexModel{
+			Keys:    bson.D{{Key: "password", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		})
 }

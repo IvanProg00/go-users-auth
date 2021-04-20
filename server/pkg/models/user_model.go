@@ -49,7 +49,16 @@ type UserUpdateModel struct {
 	Password string             `json:"password" bson:"password,omitempty" validate:"omitempty,min=8,max=22"`
 }
 
-func ValidateCreateUser(ctx *fiber.Ctx) error {
+type UserLoginModel struct {
+	Username string `json:"username" bson:"username,omitempty" validate:"required,min=2,max=28"`
+	Password string `json:"password" bson:"password,omitempty" validate:"required,min=8,max=22"`
+}
+
+type TokenModel struct {
+	Token string `json:"token"`
+}
+
+func ParseCreateUser(ctx *fiber.Ctx) error {
 	var user UserModel
 	err := ctx.BodyParser(&user)
 	if err != nil {
@@ -67,7 +76,7 @@ func ValidateCreateUser(ctx *fiber.Ctx) error {
 	return ctx.Next()
 }
 
-func ValidateUserUpdate(ctx *fiber.Ctx) error {
+func ParseUserUpdate(ctx *fiber.Ctx) error {
 	var user UserUpdateModel
 	err := ctx.BodyParser(&user)
 	if err != nil {
@@ -105,4 +114,21 @@ func FromUserToShow(user UserModel) UserShowModel {
 		Username: user.Username,
 		Email:    user.Email,
 	}
+}
+
+func ParseLogin(ctx *fiber.Ctx) error {
+	var user UserLoginModel
+	err := ctx.BodyParser(&user)
+	if err != nil {
+		ctx.SendStatus(http.StatusBadRequest)
+		return api_struct.ErrorMessage(ctx, util.CantParse)
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(user); err != nil {
+		return api_struct.ErrorMessage(ctx, validation.ValidateModel(err, userFields))
+	}
+
+	ctx.Locals(configs.LocalLogin, user)
+	return ctx.Next()
 }

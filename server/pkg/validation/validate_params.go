@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func ValidateObjectID(ctx *fiber.Ctx) error {
+func ParseObjectIDController(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -20,5 +20,16 @@ func ValidateObjectID(ctx *fiber.Ctx) error {
 
 	ctx.Locals(configs.LocalObjectID, objectID)
 	return ctx.Next()
+}
 
+func ParseJWTToIDController(ctx *fiber.Ctx) error {
+	id := ctx.Locals("id").(string)
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		ctx.SendStatus(http.StatusBadRequest)
+		return api_struct.ErrorMessage(ctx, util.IncorrectObjectID)
+	}
+
+	ctx.Locals(configs.LocalObjectID, objectID)
+	return ctx.Next()
 }

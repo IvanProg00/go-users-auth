@@ -16,10 +16,23 @@ func New(app *fiber.App) {
 	api := app.Group("/api")
 	apiv1 := api.Group("/v1")
 
-	apiv1users := apiv1.Group("/users")
-	apiv1users.Get("", controllers.GetUsers)
-	apiv1users.Get("/:id", validation.ValidateObjectID, models.GetUserById, controllers.GetUser)
-	apiv1users.Post("", models.ValidateCreateUser, controllers.CreateUser)
-	apiv1users.Put("/:id", validation.ValidateObjectID, models.ValidateUserUpdate, models.GetUserById, controllers.UpdateUser)
-	apiv1users.Delete("/:id", validation.ValidateObjectID, models.GetUserById, controllers.DeleteUser)
+	ApiV1UsersRouter(apiv1)
+	ApiV1AuthRouter(apiv1)
+}
+
+func ApiV1UsersRouter(routes fiber.Router) {
+	users := routes.Group("/users")
+
+	users.Get("", controllers.GetUsers)
+	users.Get("/:id", validation.ParseObjectIDController, models.GetUserById, controllers.GetUser)
+	users.Post("", models.ParseCreateUser, controllers.CreateUser)
+	users.Put("/:id", validation.ParseObjectIDController, models.ParseUserUpdate, models.GetUserById, controllers.UpdateUser)
+	users.Delete("/:id", validation.ParseObjectIDController, models.GetUserById, controllers.DeleteUser)
+}
+
+func ApiV1AuthRouter(routes fiber.Router) {
+	auth := routes.Group("/auth")
+
+	auth.Post("/login", models.ParseLogin, controllers.LoginController)
+	auth.Post("", controllers.ParseJWTController, validation.ParseJWTToIDController, models.GetUserById, controllers.GetUser)
 }

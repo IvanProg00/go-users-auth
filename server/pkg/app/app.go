@@ -30,6 +30,7 @@ func Run() {
 
 	app.Use(cors.New())
 	app.Use(logger.New())
+
 	routes.New(app)
 
 	util.Log.Fatalln(app.Listen(":" + port))

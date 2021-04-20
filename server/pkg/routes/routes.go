@@ -21,5 +21,5 @@ func New(app *fiber.App) {
 	apiv1users.Get("/:id", validation.ValidateObjectID, models.GetUserById, controllers.GetUser)
 	apiv1users.Post("", models.ValidateCreateUser, controllers.CreateUser)
 	apiv1users.Put("/:id", validation.ValidateObjectID, models.ValidateUserUpdate, models.GetUserById, controllers.UpdateUser)
-	apiv1users.Delete("/:id", validation.ValidateObjectID, controllers.DeleteUser)
+	apiv1users.Delete("/:id", validation.ValidateObjectID, models.GetUserById, controllers.DeleteUser)
 }

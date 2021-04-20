@@ -1,13 +1,12 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"users-authentication/pkg/api_struct"
 	"users-authentication/pkg/configs"
 	"users-authentication/pkg/database"
-	"users-authentication/pkg/error_utils"
 	"users-authentication/pkg/models"
+	"users-authentication/pkg/util"
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
@@ -21,13 +20,13 @@ func GetUsers(ctx *fiber.Ctx) error {
 		Find(ctx.Context(), bson.D{})
 	if err != nil {
 		ctx.SendStatus(http.StatusInternalServerError)
-		return api_struct.ErrorMessage(ctx, error_utils.InternalServerError)
+		return api_struct.ErrorMessage(ctx, util.InternalServerError)
 	}
 
 	var users []models.UserShowModel
 	if err := cursor.All(ctx.Context(), &users); err != nil {
 		ctx.SendStatus(http.StatusInternalServerError)
-		return api_struct.ErrorMessage(ctx, error_utils.InternalServerError)
+		return api_struct.ErrorMessage(ctx, util.InternalServerError)
 	}
 
 	ctx.SendStatus(http.StatusOK)
@@ -36,7 +35,6 @@ func GetUsers(ctx *fiber.Ctx) error {
 
 func GetUser(ctx *fiber.Ctx) error {
 	user := ctx.Locals(configs.LocalUser).(models.UserModel)
-	fmt.Println(user.Email)
 
 	ctx.SendStatus(http.StatusOK)
 	return api_struct.SuccessMessage(ctx, models.FromUserToShow(user))
@@ -48,7 +46,7 @@ func CreateUser(ctx *fiber.Ctx) error {
 	password, err := bcrypt.GenerateFromPassword([]byte(user.Password), configs.PasswordCost)
 	if err != nil {
 		ctx.SendStatus(http.StatusInternalServerError)
-		return ctx.JSON(error_utils.InternalServerError)
+		return ctx.JSON(util.InternalServerError)
 	}
 
 	user.Password = string(password)
@@ -57,7 +55,7 @@ func CreateUser(ctx *fiber.Ctx) error {
 		InsertOne(ctx.Context(), user)
 	if err != nil {
 		ctx.SendStatus(http.StatusInternalServerError)
-		return api_struct.ErrorMessage(ctx, error_utils.NotAddedToDatabase)
+		return api_struct.ErrorMessage(ctx, util.NotAddedToDatabase)
 	}
 
 	id, _ := res.InsertedID.(primitive.ObjectID)
@@ -88,7 +86,7 @@ func UpdateUser(ctx *fiber.Ctx) error {
 		password, err := bcrypt.GenerateFromPassword([]byte(user.Password), configs.PasswordCost)
 		if err != nil {
 			ctx.SendStatus(http.StatusInternalServerError)
-			return api_struct.ErrorMessage(ctx, error_utils.InternalServerError)
+			return api_struct.ErrorMessage(ctx, util.InternalServerError)
 		}
 		user.Password = string(password)
 	} else {
@@ -100,7 +98,7 @@ func UpdateUser(ctx *fiber.Ctx) error {
 		Decode(&user)
 	if err != nil {
 		ctx.SendStatus(http.StatusInternalServerError)
-		return api_struct.ErrorMessage(ctx, error_utils.InternalServerError)
+		return api_struct.ErrorMessage(ctx, util.InternalServerError)
 	}
 
 	var userShow models.UserShowModel
@@ -109,7 +107,7 @@ func UpdateUser(ctx *fiber.Ctx) error {
 		Decode(&userShow)
 	if err != nil {
 		ctx.SendStatus(http.StatusNotFound)
-		return api_struct.ErrorMessage(ctx, error_utils.UserNotFound)
+		return api_struct.ErrorMessage(ctx, util.UserNotFound)
 	}
 
 	ctx.SendStatus(http.StatusOK)
@@ -125,9 +123,8 @@ func DeleteUser(ctx *fiber.Ctx) error {
 		FindOneAndDelete(ctx.Context(), bson.M{"_id": user.ID}).Decode(&userShow)
 	if err != nil {
 		ctx.SendStatus(http.StatusInternalServerError)
-		return api_struct.ErrorMessage(ctx, error_utils.InternalServerError)
+		return api_struct.ErrorMessage(ctx, util.InternalServerError)
 	}
-	fmt.Println("OK")
 
 	ctx.SendStatus(http.StatusOK)
 	return api_struct.SuccessMessage(ctx, userShow)

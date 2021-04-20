@@ -1,7 +1,6 @@
 package app
 
 import (
-	"log"
 	"os"
 	"users-authentication/pkg/database"
 	"users-authentication/pkg/routes"
@@ -13,9 +12,13 @@ import (
 )
 
 func Run() {
+	util.NewLogger()
+
 	err := database.NewConnectionDatabase(database.DatabaseUsers)
 	if err != nil {
-		log.Fatalln(err)
+		util.Log.Fatalln(err)
+	} else {
+		util.Log.Infoln(util.DatabaseConnected)
 	}
 
 	port := os.Getenv(util.Port)
@@ -29,5 +32,5 @@ func Run() {
 	app.Use(logger.New())
 	routes.New(app)
 
-	log.Fatalln(app.Listen(":" + port))
+	util.Log.Fatalln(app.Listen(":" + port))
 }

@@ -8,3 +8,13 @@
 - Docker
 - JWT **(Future)**
 - React **(Future)**
+
+## Downalod
+
+- [Docker](https://www.docker.com/)
+
+## Run
+
+```bash
+docker-compose up
+```

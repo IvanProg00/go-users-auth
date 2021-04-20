@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
+	"users-authentication/pkg/configs"
 	"users-authentication/pkg/util"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -43,7 +43,7 @@ func NewConnection() error {
 		port = "27017"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), configs.TimeToConnectDB)
 	defer cancel()
 
 	mongoOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s@%s:%s", username, password, host, port))

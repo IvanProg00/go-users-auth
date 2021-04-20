@@ -5,7 +5,7 @@ import (
 	"users-authentication/pkg/api_struct"
 	"users-authentication/pkg/configs"
 	"users-authentication/pkg/database"
-	"users-authentication/pkg/error_utils"
+	"users-authentication/pkg/util"
 	"users-authentication/pkg/validation"
 
 	"github.com/go-playground/validator/v10"
@@ -54,7 +54,7 @@ func ValidateCreateUser(ctx *fiber.Ctx) error {
 	err := ctx.BodyParser(&user)
 	if err != nil {
 		ctx.SendStatus(http.StatusBadRequest)
-		return api_struct.ErrorMessage(ctx, error_utils.CantParse)
+		return api_struct.ErrorMessage(ctx, util.CantParse)
 	}
 
 	validate := validator.New()
@@ -72,7 +72,7 @@ func ValidateUserUpdate(ctx *fiber.Ctx) error {
 	err := ctx.BodyParser(&user)
 	if err != nil {
 		ctx.SendStatus(http.StatusBadRequest)
-		return api_struct.ErrorMessage(ctx, error_utils.CantParse)
+		return api_struct.ErrorMessage(ctx, util.CantParse)
 	}
 
 	validate := validator.New()
@@ -92,7 +92,7 @@ func GetUserById(ctx *fiber.Ctx) error {
 		FindOne(ctx.Context(), bson.M{"_id": id}).Decode(&user)
 	if err != nil {
 		ctx.SendStatus(http.StatusNotFound)
-		return api_struct.ErrorMessage(ctx, error_utils.UserNotFound)
+		return api_struct.ErrorMessage(ctx, util.UserNotFound)
 	}
 
 	ctx.Locals(configs.LocalUser, user)

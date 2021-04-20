@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"users-authentication/pkg/api_struct"
 	"users-authentication/pkg/configs"
-	"users-authentication/pkg/error_utils"
+	"users-authentication/pkg/util"
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -15,7 +15,7 @@ func ValidateObjectID(ctx *fiber.Ctx) error {
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		ctx.SendStatus(http.StatusBadRequest)
-		return api_struct.ErrorMessage(ctx, error_utils.IncorrectObjectID)
+		return api_struct.ErrorMessage(ctx, util.IncorrectObjectID)
 	}
 
 	ctx.Locals(configs.LocalObjectID, objectID)

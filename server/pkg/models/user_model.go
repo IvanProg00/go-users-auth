@@ -3,9 +3,10 @@ package models
 import (
 	"net/http"
 	"users-authentication/pkg/api_struct"
+	"users-authentication/pkg/configs"
 	"users-authentication/pkg/database"
 	"users-authentication/pkg/error_utils"
-	"users-authentication/pkg/validate_fields"
+	"users-authentication/pkg/validation"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -13,7 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var userFields = []validate_fields.FieldValidateModel{
+var userFields = []validation.FieldValidateModel{
 	{
 		JSONField:  "username",
 		ModelField: "Username",
@@ -48,45 +49,60 @@ type UserUpdateModel struct {
 	Password string             `json:"password" bson:"password,omitempty" validate:"omitempty,min=8,max=22"`
 }
 
-func ValidateUser(user UserModel) bson.M {
-	validate := validator.New()
-	if err := validate.Struct(user); err != nil {
-		return validate_fields.ValidateModel(err, userFields)
-	}
-	return nil
-}
-
-func ValidateUserUpdate(user UserUpdateModel) bson.M {
-	validate := validator.New()
-	if err := validate.Struct(user); err != nil {
-		return validate_fields.ValidateModel(err, userFields)
-	}
-	return nil
-}
-
-func GetUserById(id string, ctx *fiber.Ctx) (UserModel, error) {
+func ValidateCreateUser(ctx *fiber.Ctx) error {
 	var user UserModel
-
-	objectID, err := error_utils.ValidateObjectID(id, ctx)
+	err := ctx.BodyParser(&user)
 	if err != nil {
-		return user, err
+		ctx.SendStatus(http.StatusBadRequest)
+		return api_struct.ErrorMessage(ctx, error_utils.CantParse)
 	}
 
-	err = database.MI.DB.
+	validate := validator.New()
+	if err := validate.Struct(user); err != nil {
+		ctx.SendStatus(http.StatusBadRequest)
+		return api_struct.ErrorMessage(ctx, validation.ValidateModel(err, userFields))
+	}
+
+	ctx.Locals(configs.LocalUser, user)
+	return ctx.Next()
+}
+
+func ValidateUserUpdate(ctx *fiber.Ctx) error {
+	var user UserUpdateModel
+	err := ctx.BodyParser(&user)
+	if err != nil {
+		ctx.SendStatus(http.StatusBadRequest)
+		return api_struct.ErrorMessage(ctx, error_utils.CantParse)
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(user); err != nil {
+		return api_struct.ErrorMessage(ctx, validation.ValidateModel(err, userFields))
+	}
+
+	return ctx.Next()
+}
+
+func GetUserById(ctx *fiber.Ctx) error {
+	var user UserModel
+	id := ctx.Locals(configs.LocalObjectID).(primitive.ObjectID)
+
+	err := database.MI.DB.
 		Collection(database.CollectionUsers).
-		FindOne(ctx.Context(), bson.M{"_id": objectID}).Decode(&user)
+		FindOne(ctx.Context(), bson.M{"_id": id}).Decode(&user)
 	if err != nil {
 		ctx.SendStatus(http.StatusNotFound)
-		return user, ctx.JSON(api_struct.ErrorMessage(error_utils.UserNotFound))
+		return api_struct.ErrorMessage(ctx, error_utils.UserNotFound)
 	}
 
-	return user, nil
+	ctx.Locals(configs.LocalUser, user)
+	return ctx.Next()
 }
 
 func FromUserToShow(user UserModel) UserShowModel {
 	return UserShowModel{
 		ID:       user.ID,
 		Username: user.Username,
-		Email:    user.Password,
+		Email:    user.Email,
 	}
 }

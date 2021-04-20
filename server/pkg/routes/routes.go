@@ -2,6 +2,8 @@ package routes
 
 import (
 	"users-authentication/pkg/controllers"
+	"users-authentication/pkg/models"
+	"users-authentication/pkg/validation"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -16,8 +18,8 @@ func New(app *fiber.App) {
 
 	apiv1users := apiv1.Group("/users")
 	apiv1users.Get("", controllers.GetUsers)
-	apiv1users.Get("/:id", controllers.GetUser)
-	apiv1users.Post("", controllers.CreateUser)
-	apiv1users.Put("/:id", controllers.UpdateUser)
-	apiv1users.Delete("/:id", controllers.DeleteUser)
+	apiv1users.Get("/:id", validation.ValidateObjectID, models.GetUserById, controllers.GetUser)
+	apiv1users.Post("", models.ValidateCreateUser, controllers.CreateUser)
+	apiv1users.Put("/:id", validation.ValidateObjectID, models.ValidateUserUpdate, models.GetUserById, controllers.UpdateUser)
+	apiv1users.Delete("/:id", validation.ValidateObjectID, controllers.DeleteUser)
 }

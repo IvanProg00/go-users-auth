@@ -6,3 +6,5 @@
   - Fiber
 - MongoDB
 - Docker
+- JWT **(Future)**
+- React **(Future)**
